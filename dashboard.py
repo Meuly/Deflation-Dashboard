@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 
-from data_sources import fred_series_csv, yahoo_adj_close
+from data_sources import fred_series_csv, yahoo_adj_close, boc_series_csv
 from indicators import credit_stress_us_can, real_yields_us_can
 from emailer import send_email
 
