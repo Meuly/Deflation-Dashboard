@@ -216,3 +216,34 @@ def asset_correlations(
         "lookback_days": lookback,
         "note": "Higher correlation implies forced selling / risk-off; lower implies dispersion / healthier market."
     }
+def bad_news_reaction(xic: pd.Series, spy: pd.Series, bad_hits: list):
+    """
+    If bad news present, check whether markets are holding up.
+    Use last 1-day return as simple proxy.
+    """
+    if not bad_hits:
+        return {"combined": "YELLOW", "reason": "no_bad_news_detected"}
+
+    if xic is None or spy is None or len(xic.dropna()) < 2 or len(spy.dropna()) < 2:
+        return {"combined": "YELLOW", "reason": "insufficient_price_data", "bad_hits": bad_hits}
+
+    xic_ret = float(xic.dropna().pct_change().iloc[-1])
+    spy_ret = float(spy.dropna().pct_change().iloc[-1])
+
+    # Thresholds: -0.75% as “meaningful” down move
+    down_threshold = -0.0075
+
+    if xic_ret > down_threshold and spy_ret > down_threshold:
+        combined = "GREEN"
+    elif xic_ret <= down_threshold and spy_ret <= down_threshold:
+        combined = "RED"
+    else:
+        combined = "YELLOW"
+
+    return {
+        "combined": combined,
+        "xic_1d_return": xic_ret,
+        "spy_1d_return": spy_ret,
+        "bad_hits": bad_hits,
+        "note": "Bad-news reaction uses detected negative headlines + most recent 1D market response."
+    }
