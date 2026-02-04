@@ -183,6 +183,22 @@ def main():
     iwm = yahoo_adj_close("IWM", period="6mo")
 
     high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
+
+    # --- Asset correlation data ---
+    xic = yahoo_adj_close("XIC.TO", period="6mo")
+    hyg = yahoo_adj_close("HYG", period="6mo")
+    xre = yahoo_adj_close("XRE.TO", period="6mo")
+    vnq = yahoo_adj_close("VNQ", period="6mo")
+
+    corr = asset_correlations(
+        xic=xic,
+        spy=spy,
+        hyg=hyg,
+        xre=xre,
+        vnq=vnq,
+        btc=btc,
+        lookback=10,
+    )
     
     results = {
         "credit_stress": credit,
