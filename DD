@@ -1,0 +1,9 @@
+deflation-risk-dashboard/
+│
+├── dashboard.py
+├── emailer.py
+├── config.py
+├── requirements.txt
+└── .github/
+    └── workflows/
+        └── run_dashboard.yml
