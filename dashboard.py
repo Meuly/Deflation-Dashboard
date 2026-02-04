@@ -120,8 +120,8 @@ def main():
     us_real_10y = fred_series_csv("DFII10")  # US 10Y TIPS real yield
     # Canada 10Y nominal yield proxy via BoC CSV (we'll use a stable CSV endpoint)
     ca_10y_nominal = boc_series_csv(
-        "https://www.bankofcanada.ca/valet/observations/V39062/csv?recent=200"
-    )
+    "https://www.bankofcanada.ca/valet/observations/BD.CDN.10YR.DQ.YLD/csv?recent=200"
+)
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
 
