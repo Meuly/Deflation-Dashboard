@@ -206,7 +206,18 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
-    bad_reaction = bad_news_reaction(xic=xic, spy=spy, bad_hits=bad_hits)
+        # --- Bad news reaction (guaranteed-defined variables) ---
+    bad_hits = bad_hits if "bad_hits" in locals() else []
+
+    try:
+        bad_reaction = bad_news_reaction(xic=xic, spy=spy, bad_hits=bad_hits)
+    except Exception as e:
+        errors.append(f"Bad news reaction calc failed: {type(e).__name__}: {e}")
+        bad_reaction = {
+            "combined": "YELLOW",
+            "reason": "bad_news_reaction_failed",
+            "bad_hits": bad_hits,
+        }
     
     # --- Asset correlation data ---
     xic = yahoo_adj_close("XIC.TO", period="6mo")
