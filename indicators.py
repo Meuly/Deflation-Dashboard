@@ -147,3 +147,72 @@ def high_beta_leadership(btc: pd.Series, spy: pd.Series, qqq: pd.Series, dia: pd
         "downs": downs,
         "note": "High-beta leadership based on 10D relative strength of BTC/SPY, QQQ/DIA, IWM/SPY."
     }
+
+def asset_correlations(
+    xic: pd.Series,  # Canada equity proxy
+    spy: pd.Series,  # US equity
+    hyg: pd.Series,  # credit proxy
+    xre: pd.Series,  # Canada REITs
+    vnq: pd.Series,  # US REITs
+    btc: pd.Series,  # bitcoin
+    lookback: int = 10,
+):
+    """
+    Computes average pairwise correlation of daily returns across assets.
+    High correlation = forced selling / risk-off.
+    """
+    series_map = {
+        "XIC.TO": xic,
+        "SPY": spy,
+        "HYG": hyg,
+        "XRE.TO": xre,
+        "VNQ": vnq,
+        "BTC-USD": btc,
+    }
+
+    # Clean + align
+    df = pd.DataFrame({k: v for k, v in series_map.items() if v is not None})
+    df = df.dropna(how="all")
+
+    # Need enough data
+    if df.shape[0] < lookback + 2 or df.shape[1] < 3:
+        return {"combined": "YELLOW", "reason": "insufficient_data"}
+
+    # Use returns for correlation
+    rets = df.pct_change().dropna()
+    rets = rets.tail(lookback)
+
+    if rets.shape[0] < lookback or rets.shape[1] < 3:
+        return {"combined": "YELLOW", "reason": "insufficient_aligned_data"}
+
+    corr = rets.corr()
+
+    # Average pairwise correlation (upper triangle, excluding diagonal)
+    vals = []
+    cols = list(corr.columns)
+    for i in range(len(cols)):
+        for j in range(i + 1, len(cols)):
+            v = corr.iloc[i, j]
+            if pd.notna(v):
+                vals.append(float(v))
+
+    if not vals:
+        return {"combined": "YELLOW", "reason": "no_corr_values"}
+
+    avg_corr = sum(vals) / len(vals)
+
+    # Thresholds (tunable)
+    if avg_corr >= 0.75:
+        combined = "RED"
+    elif avg_corr <= 0.55:
+        combined = "GREEN"
+    else:
+        combined = "YELLOW"
+
+    return {
+        "combined": combined,
+        "avg_corr": avg_corr,
+        "assets_used": cols,
+        "lookback_days": lookback,
+        "note": "Higher correlation implies forced selling / risk-off; lower implies dispersion / healthier market."
+    }
