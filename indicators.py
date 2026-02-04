@@ -5,24 +5,7 @@ def _ma(series: pd.Series, n: int) -> float:
     return float(series.tail(n).mean())
 
 
-def _pct_change(series: pd.Series, n: int) -> float:
-    # percent change over n trading days
-    if len(series) < n + 1:
-        return float("nan")
-    start = float(series.iloc[-(n + 1)])
-    end = float(series.iloc[-1])
-    if start == 0:
-        return float("nan")
-    return (end / start) - 1.0
-
-
 def ryg_trend_ma(series: pd.Series, fast: int = 5, slow: int = 20, flat_band: float = 0.05):
-    """
-    Generic R/Y/G based on fast MA vs slow MA.
-    - RED: fast > slow*(1+flat_band)
-    - GREEN: fast < slow*(1-flat_band)
-    - YELLOW: in between or insufficient data
-    """
     if series is None or len(series.dropna()) < slow:
         return "YELLOW", {"reason": "insufficient_data"}
 
@@ -38,18 +21,10 @@ def ryg_trend_ma(series: pd.Series, fast: int = 5, slow: int = 20, flat_band: fl
 
 
 def credit_stress_us_can(us_hy_oas: pd.Series, ca_hy_etf: pd.Series):
-    """
-    US: HY OAS (higher = worse) via MA trend.
-    Canada: HY ETF price (lower = worse) via MA trend, inverted.
-    Combined:
-      - RED if either side is RED
-      - GREEN if both are GREEN
-      - else YELLOW
-    """
-    us_status, us_meta = ryg_trend_ma(us_hy_oas, flat_band=0.03)  # tighter band
+    us_status, us_meta = ryg_trend_ma(us_hy_oas, flat_band=0.03)
     ca_status_raw, ca_meta = ryg_trend_ma(ca_hy_etf, flat_band=0.02)
 
-    # Invert Canada ETF logic: price trend down = stress up
+    # Invert Canada ETF logic: falling price = higher credit stress
     if ca_status_raw == "RED":
         ca_status = "GREEN"
     elif ca_status_raw == "GREEN":
@@ -57,7 +32,6 @@ def credit_stress_us_can(us_hy_oas: pd.Series, ca_hy_etf: pd.Series):
     else:
         ca_status = "YELLOW"
 
-    # Combine conservatively
     if us_status == "RED" or ca_status == "RED":
         combined = "RED"
     elif us_status == "GREEN" and ca_status == "GREEN":
