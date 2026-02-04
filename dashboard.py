@@ -95,8 +95,10 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     else:
         commentary_lines.append("Cross-asset correlations are mixed; forced selling signals are not definitive.")
 
-        pol = results.get("policy_actions") or {}
+    # Policy actions commentary (safe, non-directive)
+    pol = results.get("policy_actions") or {}
     pol_s = pol.get("combined", "YELLOW")
+
     if pol_s == "GREEN":
         commentary_lines.append("Policy tone in the last 48 hours leans supportive to liquidity/financial stability.")
     elif pol_s == "RED":
