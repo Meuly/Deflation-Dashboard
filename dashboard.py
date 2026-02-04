@@ -219,7 +219,10 @@ def main():
     corr = asset_correlations(xic=xic, spy=spy, hyg=hyg, xre=xre, vnq=vnq, btc=btc, lookback=10)
    
     # --- High beta leadership data (fail-soft) ---
+    
     errors = []
+    bad_hits = []
+    
     try:
         btc = yahoo_adj_close("BTC-USD", period="6mo")
     except Exception as e:
@@ -259,6 +262,12 @@ def main():
         errors.append(f"Bad news RSS failed: {type(e).__name__}: {e}")
         bad_hits = []
 
+    try:
+        bad_reaction = bad_news_reaction(xic=xic, spy=spy, bad_hits=bad_hits)
+    except Exception as e:
+        errors.append(f"Bad news reaction calc failed: {type(e).__name__}: {e}")
+        bad_reaction = {"combined": "YELLOW", "reason": "bad_news_reaction_failed", "bad_hits": bad_hits}
+        
     try:
         bad_reaction = bad_news_reaction(
             xic=xic,
