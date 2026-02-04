@@ -79,7 +79,23 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append("Real yields are tightening, indicating more restrictive conditions.")
     else:
         commentary_lines.append("Real yield conditions remain mixed or unclear.")
-        
+          
+    # High-beta leadership commentary (safe, non-directive)
+    hb = results.get("high_beta") or {}
+    hb_s = hb.get("combined", "YELLOW")
+
+    if hb_s == "GREEN":
+        commentary_lines.append(
+            "High-beta assets are leading on relative strength, consistent with liquidity returning."
+        )
+    elif hb_s == "RED":
+        commentary_lines.append(
+            "High-beta assets are lagging, consistent with risk appetite remaining weak."
+        )
+    else:
+        commentary_lines.append(
+            "High-beta leadership is mixed; liquidity signals are not yet decisive."
+        )  
     subject = f"Deflation Dashboard (CAN+US) — {now_et}"
 
     body = []
@@ -138,16 +154,7 @@ def main():
     dia = yahoo_adj_close("DIA", period="6mo")
     iwm = yahoo_adj_close("IWM", period="6mo")
 
-    hb = results.get("high_beta") or {}
-    hb_s = hb.get("combined", "YELLOW")
-    if hb_s == "GREEN":
-        commentary_lines.append("High-beta assets are leading on relative strength, consistent with liquidity returning.")
-    elif hb_s == "RED":
-        commentary_lines.append("High-beta assets are lagging, consistent with risk appetite remaining weak.")
-    else:
-        commentary_lines.append("High-beta leadership is mixed; liquidity signals are not yet decisive.")
-    high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
-    
+      
     results = {
         "credit_stress": credit,
         "real_yields": real_yields,
