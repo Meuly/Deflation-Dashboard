@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 
 from data_sources import fred_series_csv, yahoo_adj_close, boc_series_csv
-from indicators import credit_stress_us_can, real_yields_us_can
+from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership
 from emailer import send_email
 
 
@@ -19,6 +19,11 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         "us_real_10y_fred": "https://fred.stlouisfed.org/series/DFII10",
         "us_real_10y_chart": "https://fred.stlouisfed.org/series/DFII10",
         "ca_10y_yield_info": "https://www.bankofcanada.ca/rates/interest-rates/canadian-bonds/",
+        "btc": "https://finance.yahoo.com/quote/BTC-USD",
+        "spy": "https://finance.yahoo.com/quote/SPY",
+        "qqq": "https://finance.yahoo.com/quote/QQQ",
+        "dia": "https://finance.yahoo.com/quote/DIA",
+        "iwm": "https://finance.yahoo.com/quote/IWM",
     }
 
     # Indicator statuses (only #1 is real for now)
@@ -40,7 +45,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         ("3. Asset Correlations", placeholders["asset_correlations"]),
         ("4. Real Yields (US+CA)", results["real_yields"]["combined"]),
         ("5. Bad News Reaction", placeholders["bad_news_reaction"]),
-        ("6. High-Beta Leadership", placeholders["high_beta"]),
+        ("6. High-Beta Leadership", results["high_beta"]["combined"]),
     ]
 
     green_count = sum(1 for _, s in statuses if s == "GREEN")
@@ -101,6 +106,11 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.extend([f"- {x}" for x in commentary_lines])
     body.append(f"- US 10Y Real Yield (FRED DFII10): {links['us_real_10y_fred']}")
     body.append(f"- Canada 10Y yield info (BoC): {links['ca_10y_yield_info']}")
+    body.append(f"- BTC-USD: {links['btc']}")
+    body.append(f"- SPY: {links['spy']}")
+    body.append(f"- QQQ: {links['qqq']}")
+    body.append(f"- DIA: {links['dia']}")
+    body.append(f"- IWM: {links['iwm']}")
 
     return subject, "\n".join(body)
 
@@ -121,10 +131,27 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
+    # --- High beta leadership data ---
+    btc = yahoo_adj_close("BTC-USD", period="6mo")
+    spy = yahoo_adj_close("SPY", period="6mo")
+    qqq = yahoo_adj_close("QQQ", period="6mo")
+    dia = yahoo_adj_close("DIA", period="6mo")
+    iwm = yahoo_adj_close("IWM", period="6mo")
 
+    hb = results.get("high_beta") or {}
+    hb_s = hb.get("combined", "YELLOW")
+    if hb_s == "GREEN":
+        commentary_lines.append("High-beta assets are leading on relative strength, consistent with liquidity returning.")
+    elif hb_s == "RED":
+        commentary_lines.append("High-beta assets are lagging, consistent with risk appetite remaining weak.")
+    else:
+        commentary_lines.append("High-beta leadership is mixed; liquidity signals are not yet decisive.")
+    high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
+    
     results = {
         "credit_stress": credit,
         "real_yields": real_yields,
+        "high_beta": high_beta,
     }
 
     subject, body = build_email(now_et, results)
