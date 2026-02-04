@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 
 from data_sources import fred_series_csv, yahoo_adj_close, boc_series_csv
-from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership
+from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership, asset_correlations
 from emailer import send_email
 
 
@@ -24,6 +24,10 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         "qqq": "https://finance.yahoo.com/quote/QQQ",
         "dia": "https://finance.yahoo.com/quote/DIA",
         "iwm": "https://finance.yahoo.com/quote/IWM",
+        "xic": "https://finance.yahoo.com/quote/XIC.TO",
+        "hyg": "https://finance.yahoo.com/quote/HYG",
+        "xre": "https://finance.yahoo.com/quote/XRE.TO",
+        "vnq": "https://finance.yahoo.com/quote/VNQ",
     }
 
     # Indicator statuses (only #1 is real for now)
@@ -42,7 +46,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     statuses = [
         ("1. Credit Stress (US+CA)", s1),
         ("2. Policy Actions (BoC+Fed)", placeholders["policy_actions"]),
-        ("3. Asset Correlations", placeholders["asset_correlations"]),
+        ("3. Asset Correlations", results["asset_correlations"]["combined"]),
         ("4. Real Yields (US+CA)", results["real_yields"]["combined"]),
         ("5. Bad News Reaction", placeholders["bad_news_reaction"]),
         ("6. High-Beta Leadership", results["high_beta"]["combined"]),
@@ -79,7 +83,16 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append("Real yields are tightening, indicating more restrictive conditions.")
     else:
         commentary_lines.append("Real yield conditions remain mixed or unclear.")
-          
+
+    ac = results.get("asset_correlations") or {}
+    ac_s = ac.get("combined", "YELLOW")
+    if ac_s == "GREEN":
+        commentary_lines.append("Cross-asset correlations are lower, suggesting forced selling pressure is easing.")
+    elif ac_s == "RED":
+        commentary_lines.append("Cross-asset correlations are elevated, consistent with mechanical risk-off behavior.")
+    else:
+        commentary_lines.append("Cross-asset correlations are mixed; forced selling signals are not definitive.")
+    
     # High-beta leadership commentary (safe, non-directive)
     hb = results.get("high_beta") or {}
     hb_s = hb.get("combined", "YELLOW")
@@ -127,6 +140,10 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- QQQ: {links['qqq']}")
     body.append(f"- DIA: {links['dia']}")
     body.append(f"- IWM: {links['iwm']}")
+    body.append(f"- XIC.TO (TSX proxy): {links['xic']}")
+    body.append(f"- HYG (US HY proxy): {links['hyg']}")
+    body.append(f"- XRE.TO (Canada REITs): {links['xre']}")
+    body.append(f"- VNQ (US REITs): {links['vnq']}")
 
     return subject, "\n".join(body)
 
@@ -147,6 +164,16 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
+    
+    # --- Asset correlation data ---
+    xic = yahoo_adj_close("XIC.TO", period="6mo")
+    hyg = yahoo_adj_close("HYG", period="6mo")
+    xre = yahoo_adj_close("XRE.TO", period="6mo")
+    vnq = yahoo_adj_close("VNQ", period="6mo")
+
+    # reuse existing series where possible:
+    # btc, spy already fetched for high_beta leadership
+    corr = asset_correlations(xic=xic, spy=spy, hyg=hyg, xre=xre, vnq=vnq, btc=btc, lookback=10)
    
     # --- High beta leadership data ---
     btc = yahoo_adj_close("BTC-USD", period="6mo")
@@ -161,6 +188,7 @@ def main():
         "credit_stress": credit,
         "real_yields": real_yields,
         "high_beta": high_beta,
+        "asset_correlations": corr,
     }
 
     subject, body = build_email(now_et, results)
