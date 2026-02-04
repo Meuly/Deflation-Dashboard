@@ -147,6 +147,7 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
+   
     # --- High beta leadership data ---
     btc = yahoo_adj_close("BTC-USD", period="6mo")
     spy = yahoo_adj_close("SPY", period="6mo")
@@ -154,7 +155,8 @@ def main():
     dia = yahoo_adj_close("DIA", period="6mo")
     iwm = yahoo_adj_close("IWM", period="6mo")
 
-      
+    high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
+    
     results = {
         "credit_stress": credit,
         "real_yields": real_yields,
