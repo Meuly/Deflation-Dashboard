@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 
 from data_sources import fred_series_csv, yahoo_adj_close
-from indicators import credit_stress_us_can
+from indicators import credit_stress_us_can, real_yields_us_can
 from emailer import send_email
 
 
@@ -16,6 +16,9 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         "us_hy_oas_fred": "https://fred.stlouisfed.org/series/BAMLH0A0HYM2",
         "us_hy_oas_chart": "https://fred.stlouisfed.org/graph/?g=OUJ",
         "ca_xhy": "https://finance.yahoo.com/quote/XHY.TO",
+        "us_real_10y_fred": "https://fred.stlouisfed.org/series/DFII10",
+        "us_real_10y_chart": "https://fred.stlouisfed.org/series/DFII10",
+        "ca_10y_yield_info": "https://www.bankofcanada.ca/rates/interest-rates/canadian-bonds/",
     }
 
     # Indicator statuses (only #1 is real for now)
@@ -35,7 +38,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         ("1. Credit Stress (US+CA)", s1),
         ("2. Policy Actions (BoC+Fed)", placeholders["policy_actions"]),
         ("3. Asset Correlations", placeholders["asset_correlations"]),
-        ("4. Real Yields (US+CA)", placeholders["real_yields"]),
+        ("4. Real Yields (US+CA)", results["real_yields"]["combined"]),
         ("5. Bad News Reaction", placeholders["bad_news_reaction"]),
         ("6. High-Beta Leadership", placeholders["high_beta"]),
     ]
@@ -61,6 +64,14 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append("Credit conditions are mixed/unclear (no clean trend yet).")
         commentary_lines.append("This is typically a ‘watch closely’ zone rather than a signal zone.")
 
+        ry = results.get("real_yields", {})
+    ry_s = ry.get("combined", "YELLOW")
+    if 🟢: “Real yields are easing (conditions loosening).”
+
+if 🔴: “Real yields are tightening (conditions tightening).”
+
+else: “Real yield conditions are mixed.”
+
     subject = f"Deflation Dashboard (CAN+US) — {now_et}"
 
     body = []
@@ -85,6 +96,8 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append("")
     body.append("Context & Interpretation (Non-Directive)")
     body.extend([f"- {x}" for x in commentary_lines])
+    body.append(f"- US 10Y Real Yield (FRED DFII10): {links['us_real_10y_fred']}")
+    body.append(f"- Canada 10Y yield info (BoC): {links['ca_10y_yield_info']}")
 
     return subject, "\n".join(body)
 
@@ -98,9 +111,17 @@ def main():
     ca_hy = yahoo_adj_close("XHY.TO", period="6mo")
 
     credit = credit_stress_us_can(us_hy_oas, ca_hy)
+        us_real_10y = fred_series_csv("DFII10")  # US 10Y TIPS real yield
+    # Canada 10Y nominal yield proxy via BoC CSV (we'll use a stable CSV endpoint)
+    ca_10y_nominal = boc_series_csv(
+        "https://www.bankofcanada.ca/valet/observations/V39062/csv?recent=200"
+    )
+
+       real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
 
     results = {
         "credit_stress": credit,
+        "real_yields": real_yields,
     }
 
     subject, body = build_email(now_et, results)
