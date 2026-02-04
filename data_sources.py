@@ -47,6 +47,7 @@ def yahoo_adj_close(ticker: str, period: str = "6mo") -> pd.Series:
 
     s = pd.to_numeric(s, errors="coerce").dropna().sort_index()
 
+
     # If still a DataFrame somehow, squeeze to Series
     if hasattr(s, "squeeze"):
         s = s.squeeze()
@@ -55,3 +56,33 @@ def yahoo_adj_close(ticker: str, period: str = "6mo") -> pd.Series:
         raise RuntimeError(f"Adj Close extraction failed for {ticker}")
 
     return s
+
+def boc_series_csv(series_url: str) -> pd.Series:
+    """
+    Pulls a BoC/Valet CSV URL and returns a pandas Series indexed by date.
+    You pass the full CSV URL.
+    """
+    r = requests.get(series_url, timeout=20)
+    r.raise_for_status()
+
+    df = pd.read_csv(io.StringIO(r.text))
+    # Expecting columns like: date, value (varies slightly by endpoint)
+    # Normalize:
+    if "date" not in df.columns:
+        # some BoC CSVs use 'Date'
+        for c in df.columns:
+            if c.lower() == "date":
+                df = df.rename(columns={c: "date"})
+                break
+    if "value" not in df.columns:
+        # sometimes "Value"
+        for c in df.columns:
+            if c.lower() == "value":
+                df = df.rename(columns={c: "value"})
+                break
+
+    df["date"] = pd.to_datetime(df["date"])
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    df = df.dropna()
+
+    return df.set_index("date")["value"].sort_index()
