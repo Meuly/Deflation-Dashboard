@@ -78,3 +78,72 @@ def real_yields_us_can(us_real_10y: pd.Series, ca_10y_nominal: pd.Series):
         "ca_meta": ca_meta,
         "note": "Canada series is a proxy (10Y nominal yield trend) until a clean real-yield series is wired."
     }
+
+def _ratio_trend(a: pd.Series, b: pd.Series, lookback: int = 10):
+    """
+    Returns +1 if ratio up over lookback, -1 if down, 0 if insufficient.
+    """
+    if a is None or b is None:
+        return 0, {"reason": "missing_data"}
+    a = a.dropna()
+    b = b.dropna()
+    if len(a) < lookback + 1 or len(b) < lookback + 1:
+        return 0, {"reason": "insufficient_data"}
+
+    # Align by date
+    df = pd.concat([a, b], axis=1, join="inner").dropna()
+    if len(df) < lookback + 1:
+        return 0, {"reason": "insufficient_aligned_data"}
+
+    ratio = df.iloc[:, 0] / df.iloc[:, 1]
+    start = float(ratio.iloc[-(lookback + 1)])
+    end = float(ratio.iloc[-1])
+
+    if end > start * 1.01:   # up > +1%
+        return 1, {"start": start, "end": end}
+    if end < start * 0.99:   # down < -1%
+        return -1, {"start": start, "end": end}
+    return 0, {"start": start, "end": end}
+
+
+def high_beta_leadership(btc: pd.Series, spy: pd.Series, qqq: pd.Series, dia: pd.Series, iwm: pd.Series):
+    """
+    Measures whether high-beta is leading using 3 relative ratios.
+    Score:
+      - GREEN: >=2 ratios up
+      - RED:   >=2 ratios down
+      - YELLOW: otherwise
+    """
+    signals = {}
+    score = 0
+
+    s, meta = _ratio_trend(btc, spy, lookback=10)
+    signals["BTC/SPY"] = {"signal": s, "meta": meta}
+    score += s
+
+    s, meta = _ratio_trend(qqq, dia, lookback=10)
+    signals["QQQ/DIA"] = {"signal": s, "meta": meta}
+    score += s
+
+    s, meta = _ratio_trend(iwm, spy, lookback=10)
+    signals["IWM/SPY"] = {"signal": s, "meta": meta}
+    score += s
+
+    # Convert signals to status
+    ups = sum(1 for k in signals if signals[k]["signal"] == 1)
+    downs = sum(1 for k in signals if signals[k]["signal"] == -1)
+
+    if ups >= 2:
+        combined = "GREEN"
+    elif downs >= 2:
+        combined = "RED"
+    else:
+        combined = "YELLOW"
+
+    return {
+        "combined": combined,
+        "details": signals,
+        "ups": ups,
+        "downs": downs,
+        "note": "High-beta leadership based on 10D relative strength of BTC/SPY, QQQ/DIA, IWM/SPY."
+    }
