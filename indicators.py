@@ -2,7 +2,11 @@ import pandas as pd
 
 
 def _ma(series: pd.Series, n: int) -> float:
-    return float(series.tail(n).mean())
+    m = series.tail(n).mean()
+    # If mean is a Series (shouldn't be, but can happen), take first value
+    if isinstance(m, pd.Series):
+        m = m.iloc[0]
+    return float(m)
 
 
 def ryg_trend_ma(series: pd.Series, fast: int = 5, slow: int = 20, flat_band: float = 0.05):
