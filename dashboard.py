@@ -4,7 +4,7 @@ import os
 from data_sources import fred_series_csv, yahoo_adj_close, boc_series_csv
 from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership, asset_correlations
 from emailer import send_email
-
+from news_policy import fetch_recent_feed_items, policy_actions_indicator
 
 def fmt_status(s: str) -> str:
     return {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(s, "🟡")
@@ -28,6 +28,8 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         "hyg": "https://finance.yahoo.com/quote/HYG",
         "xre": "https://finance.yahoo.com/quote/XRE.TO",
         "vnq": "https://finance.yahoo.com/quote/VNQ",
+        "boc_press_rss": "https://www.bankofcanada.ca/rss/press-releases/",
+        "fed_press_rss": "https://www.federalreserve.gov/feeds/press_all.xml",
     }
 
     # Indicator statuses (only #1 is real for now)
@@ -45,7 +47,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
 
     statuses = [
         ("1. Credit Stress (US+CA)", s1),
-        ("2. Policy Actions (BoC+Fed)", placeholders["policy_actions"]),
+        ("2. Policy Actions (BoC+Fed)", results["policy_actions"]["combined"]),
         ("3. Asset Correlations", results["asset_correlations"]["combined"]),
         ("4. Real Yields (US+CA)", results["real_yields"]["combined"]),
         ("5. Bad News Reaction", placeholders["bad_news_reaction"]),
@@ -92,7 +94,16 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append("Cross-asset correlations are elevated, consistent with mechanical risk-off behavior.")
     else:
         commentary_lines.append("Cross-asset correlations are mixed; forced selling signals are not definitive.")
-    
+
+        pol = results.get("policy_actions") or {}
+    pol_s = pol.get("combined", "YELLOW")
+    if pol_s == "GREEN":
+        commentary_lines.append("Policy tone in the last 48 hours leans supportive to liquidity/financial stability.")
+    elif pol_s == "RED":
+        commentary_lines.append("Policy tone in the last 48 hours leans restrictive, prioritizing inflation containment.")
+    else:
+        commentary_lines.append("Policy tone remains neutral or mixed based on recent official updates.")
+        
     # High-beta leadership commentary (safe, non-directive)
     hb = results.get("high_beta") or {}
     hb_s = hb.get("combined", "YELLOW")
@@ -144,6 +155,8 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- HYG (US HY proxy): {links['hyg']}")
     body.append(f"- XRE.TO (Canada REITs): {links['xre']}")
     body.append(f"- VNQ (US REITs): {links['vnq']}")
+    body.append(f"- BoC Press Releases (RSS): {links['boc_press_rss']}")
+    body.append(f"- Fed Press Releases (RSS): {links['fed_press_rss']}")
 
     return subject, "\n".join(body)
 
@@ -213,12 +226,26 @@ def main():
     except Exception as e:
         errors.append(f"Asset correlation calc failed: {type(e).__name__}: {e}")
         corr = {"combined": "YELLOW", "reason": "asset_corr_failed"}
-    
+
+        # --- Policy actions (BoC + Fed) via RSS (fail-soft) ---
+    try:
+        boc_feed = "https://www.bankofcanada.ca/rss/press-releases/"
+        fed_feed = "https://www.federalreserve.gov/feeds/press_all.xml"
+
+        boc_items = fetch_recent_feed_items(boc_feed, hours=48)
+        fed_items = fetch_recent_feed_items(fed_feed, hours=48)
+
+        policy = policy_actions_indicator(boc_items, fed_items)
+    except Exception as e:
+        errors.append(f"Policy RSS failed: {type(e).__name__}: {e}")
+        policy = {"combined": "YELLOW", "reason": "policy_failed"}
+        
     results = {
         "credit_stress": credit,
         "real_yields": real_yields,
         "high_beta": high_beta,
         "asset_correlations": corr,
+        "policy_actions": policy,
     }
 
     subject, body = build_email(now_et, results)
