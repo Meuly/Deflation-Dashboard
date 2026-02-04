@@ -66,12 +66,18 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
 
         ry = results.get("real_yields", {})
     ry_s = ry.get("combined", "YELLOW")
-    if 🟢: “Real yields are easing (conditions loosening).”
 
-if 🔴: “Real yields are tightening (conditions tightening).”
+        # Real yields commentary (safe, non-directive)
+    ry = results.get("real_yields", {})
+    ry_status = ry.get("combined", "YELLOW")
 
-else: “Real yield conditions are mixed.”
-
+    if ry_status == "GREEN":
+        commentary_lines.append("Real yields are easing, indicating looser financial conditions.")
+    elif ry_status == "RED":
+        commentary_lines.append("Real yields are tightening, indicating more restrictive conditions.")
+    else:
+        commentary_lines.append("Real yield conditions remain mixed or unclear.")
+        
     subject = f"Deflation Dashboard (CAN+US) — {now_et}"
 
     body = []
