@@ -94,7 +94,7 @@ def main():
     now_et = datetime.now().strftime("%Y-%m-%d %H:%M ET")
 
     # Fetch data
-    us_hy_oas = fred_series_csv("BAMLH0A0HYM2")  # ICE BofA US HY OAS :contentReference[oaicite:1]{index=1}
+    us_hy_oas = fred_series_csv("BAMLH0A0HYM2")  # ICE BofA US HY OAS
     ca_hy = yahoo_adj_close("XHY.TO", period="6mo")
 
     credit = credit_stress_us_can(us_hy_oas, ca_hy)
