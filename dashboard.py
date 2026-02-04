@@ -64,16 +64,13 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append("Credit conditions are mixed/unclear (no clean trend yet).")
         commentary_lines.append("This is typically a ‘watch closely’ zone rather than a signal zone.")
 
-        ry = results.get("real_yields", {})
+    # Real yields commentary (safe, non-directive)
+    ry = results.get("real_yields", {})
     ry_s = ry.get("combined", "YELLOW")
 
-        # Real yields commentary (safe, non-directive)
-    ry = results.get("real_yields", {})
-    ry_status = ry.get("combined", "YELLOW")
-
-    if ry_status == "GREEN":
+    if ry_s == "GREEN":
         commentary_lines.append("Real yields are easing, indicating looser financial conditions.")
-    elif ry_status == "RED":
+    elif ry_s == "RED":
         commentary_lines.append("Real yields are tightening, indicating more restrictive conditions.")
     else:
         commentary_lines.append("Real yield conditions remain mixed or unclear.")
