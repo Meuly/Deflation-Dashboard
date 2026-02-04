@@ -180,6 +180,13 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
 def main():
     import pandas as pd
 
+    # Defaults so the dashboard never crashes if a fetch fails
+    spy = pd.Series(dtype=float)
+    btc = pd.Series(dtype=float)
+    xic = pd.Series(dtype=float)
+
+    import pandas as pd
+
     # Defaults so we never crash if a fetch fails
     spy = pd.Series(dtype=float)
     btc = pd.Series(dtype=float)
@@ -235,6 +242,36 @@ def main():
       # --- Asset correlation data (fail-soft) ---
     try:
         xic = yahoo_adj_close("XIC.TO", period="6mo")
+    except Exception as e:
+        errors.append(f"XIC.TO fetch failed: {type(e).__name__}: {e}")
+
+        # --- Bad news reaction (RSS + market response) ---
+    try:
+        news_feeds = [
+            "https://www.bankofcanada.ca/rss/press-releases/",
+            "https://www.federalreserve.gov/feeds/press_all.xml",
+            "https://www.cbc.ca/cmlink/rss-business",
+            "https://www.marketwatch.com/rss/topstories",
+        ]
+        news_items = fetch_recent_news(news_feeds, hours=48)
+        bad_hits = detect_bad_news(news_items)
+    except Exception as e:
+        errors.append(f"Bad news RSS failed: {type(e).__name__}: {e}")
+        bad_hits = []
+
+    try:
+        bad_reaction = bad_news_reaction(
+            xic=xic,
+            spy=spy,
+            bad_hits=bad_hits
+        )
+    except Exception as e:
+        errors.append(f"Bad news reaction calc failed: {type(e).__name__}: {e}")
+        bad_reaction = {
+            "combined": "YELLOW",
+            "reason": "bad_news_reaction_failed",
+            "bad_hits": bad_hits
+        }
         hyg = yahoo_adj_close("HYG", period="6mo")
         xre = yahoo_adj_close("XRE.TO", period="6mo")
         vnq = yahoo_adj_close("VNQ", period="6mo")
