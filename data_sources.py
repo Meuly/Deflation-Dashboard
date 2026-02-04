@@ -59,30 +59,38 @@ def yahoo_adj_close(ticker: str, period: str = "6mo") -> pd.Series:
 
 def boc_series_csv(series_url: str) -> pd.Series:
     """
-    Pulls a BoC/Valet CSV URL and returns a pandas Series indexed by date.
-    You pass the full CSV URL.
+    Pulls a BoC Valet CSV URL and returns a pandas Series indexed by date.
+    Handles Valet CSV headers and series-coded value columns.
     """
     r = requests.get(series_url, timeout=20)
     r.raise_for_status()
 
-    df = pd.read_csv(io.StringIO(r.text))
-    # Expecting columns like: date, value (varies slightly by endpoint)
-    # Normalize:
-    if "date" not in df.columns:
-        # some BoC CSVs use 'Date'
-        for c in df.columns:
-            if c.lower() == "date":
-                df = df.rename(columns={c: "date"})
-                break
-    if "value" not in df.columns:
-        # sometimes "Value"
-        for c in df.columns:
-            if c.lower() == "value":
-                df = df.rename(columns={c: "value"})
-                break
+    text = r.text.splitlines()
 
-    df["date"] = pd.to_datetime(df["date"])
-    df["value"] = pd.to_numeric(df["value"], errors="coerce")
-    df = df.dropna()
+    # Find the header row that starts the actual data table
+    header_idx = None
+    for i, line in enumerate(text):
+        # Valet uses quoted CSV; header usually starts with "date"
+        if line.strip().lower().startswith('"date"') or line.strip().lower().startswith("date"):
+            header_idx = i
+            break
 
-    return df.set_index("date")["value"].sort_index()
+    if header_idx is None:
+        raise RuntimeError("Could not find data header row in BoC CSV response")
+
+    data_text = "\n".join(text[header_idx:])
+
+    df = pd.read_csv(io.StringIO(data_text))
+    # First column should be date
+    date_col = df.columns[0]
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+
+    # Value column: usually the second column (series code)
+    if len(df.columns) < 2:
+        raise RuntimeError("BoC CSV data does not contain a value column")
+    value_col = df.columns[1]
+    df[value_col] = pd.to_numeric(df[value_col], errors="coerce")
+
+    df = df.dropna(subset=[date_col, value_col])
+
+    return df.set_index(date_col)[value_col].sort_index()
