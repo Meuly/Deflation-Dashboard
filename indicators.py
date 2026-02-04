@@ -50,3 +50,31 @@ def credit_stress_us_can(us_hy_oas: pd.Series, ca_hy_etf: pd.Series):
         "us_meta": us_meta,
         "ca_meta": ca_meta,
     }
+
+def real_yields_us_can(us_real_10y: pd.Series, ca_10y_nominal: pd.Series):
+    """
+    US: real yields (higher = tighter conditions, deflationary pressure)
+    Canada: proxy using nominal 10y yield direction (higher = tighter).
+    Combined:
+      - RED if either is RED (tightening)
+      - GREEN if both are GREEN (easing)
+      - else YELLOW
+    """
+    us_status, us_meta = ryg_trend_ma(us_real_10y, flat_band=0.02)
+    ca_status, ca_meta = ryg_trend_ma(ca_10y_nominal, flat_band=0.02)
+
+    if us_status == "RED" or ca_status == "RED":
+        combined = "RED"
+    elif us_status == "GREEN" and ca_status == "GREEN":
+        combined = "GREEN"
+    else:
+        combined = "YELLOW"
+
+    return {
+        "combined": combined,
+        "us_status": us_status,
+        "ca_status": ca_status,
+        "us_meta": us_meta,
+        "ca_meta": ca_meta,
+        "note": "Canada series is a proxy (10Y nominal yield trend) until a clean real-yield series is wired."
+    }
