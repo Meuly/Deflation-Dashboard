@@ -149,6 +149,12 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
 
 
 def main():
+    import pandas as pd
+
+    # Defaults so we never crash if a fetch fails
+    spy = pd.Series(dtype=float)
+    btc = pd.Series(dtype=float)
+
     # Timestamp label (ET)
     now_et = datetime.now().strftime("%Y-%m-%d %H:%M ET")
 
@@ -175,30 +181,38 @@ def main():
     # btc, spy already fetched for high_beta leadership
     corr = asset_correlations(xic=xic, spy=spy, hyg=hyg, xre=xre, vnq=vnq, btc=btc, lookback=10)
    
-    # --- High beta leadership data ---
-    btc = yahoo_adj_close("BTC-USD", period="6mo")
-    spy = yahoo_adj_close("SPY", period="6mo")
-    qqq = yahoo_adj_close("QQQ", period="6mo")
-    dia = yahoo_adj_close("DIA", period="6mo")
-    iwm = yahoo_adj_close("IWM", period="6mo")
+    # --- High beta leadership data (fail-soft) ---
+    errors = []
+    try:
+        btc = yahoo_adj_close("BTC-USD", period="6mo")
+    except Exception as e:
+        errors.append(f"BTC-USD fetch failed: {type(e).__name__}: {e}")
 
-    high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
+    try:
+        spy = yahoo_adj_close("SPY", period="6mo")
+    except Exception as e:
+        errors.append(f"SPY fetch failed: {type(e).__name__}: {e}")
 
-    # --- Asset correlation data ---
-    xic = yahoo_adj_close("XIC.TO", period="6mo")
-    hyg = yahoo_adj_close("HYG", period="6mo")
-    xre = yahoo_adj_close("XRE.TO", period="6mo")
-    vnq = yahoo_adj_close("VNQ", period="6mo")
+    try:
+        qqq = yahoo_adj_close("QQQ", period="6mo")
+        dia = yahoo_adj_close("DIA", period="6mo")
+        iwm = yahoo_adj_close("IWM", period="6mo")
+        high_beta = high_beta_leadership(btc, spy, qqq, dia, iwm)
+    except Exception as e:
+        errors.append(f"High-beta calc failed: {type(e).__name__}: {e}")
+        high_beta = {"combined": "YELLOW", "reason": "high_beta_failed"}
 
-    corr = asset_correlations(
-        xic=xic,
-        spy=spy,
-        hyg=hyg,
-        xre=xre,
-        vnq=vnq,
-        btc=btc,
-        lookback=10,
-    )
+      # --- Asset correlation data (fail-soft) ---
+    try:
+        xic = yahoo_adj_close("XIC.TO", period="6mo")
+        hyg = yahoo_adj_close("HYG", period="6mo")
+        xre = yahoo_adj_close("XRE.TO", period="6mo")
+        vnq = yahoo_adj_close("VNQ", period="6mo")
+
+        corr = asset_correlations(xic=xic, spy=spy, hyg=hyg, xre=xre, vnq=vnq, btc=btc, lookback=10)
+    except Exception as e:
+        errors.append(f"Asset correlation calc failed: {type(e).__name__}: {e}")
+        corr = {"combined": "YELLOW", "reason": "asset_corr_failed"}
     
     results = {
         "credit_stress": credit,
@@ -209,6 +223,9 @@ def main():
 
     subject, body = build_email(now_et, results)
 
+    if errors:
+        body += "\n\nData Warnings\n" + "\n".join([f"- {x}" for x in errors])
+        
     send_email(
         subject=subject,
         body=body,
