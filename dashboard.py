@@ -2,9 +2,10 @@ from datetime import datetime
 import os
 
 from data_sources import fred_series_csv, yahoo_adj_close, boc_series_csv
-from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership, asset_correlations
+from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leadership, asset_correlations, bad_news_reaction
 from emailer import send_email
 from news_policy import fetch_recent_feed_items, policy_actions_indicator
+from news_bad import fetch_recent_news, detect_bad_news
 
 def fmt_status(s: str) -> str:
     return {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(s, "🟡")
@@ -30,6 +31,8 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         "vnq": "https://finance.yahoo.com/quote/VNQ",
         "boc_press_rss": "https://www.bankofcanada.ca/rss/press-releases/",
         "fed_press_rss": "https://www.federalreserve.gov/feeds/press_all.xml",
+        "cbc_business_rss": "https://www.cbc.ca/cmlink/rss-business",
+        "mw_rss": "https://www.marketwatch.com/rss/topstories",
     }
 
     # Indicator statuses (only #1 is real for now)
@@ -50,7 +53,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         ("2. Policy Actions (BoC+Fed)", results["policy_actions"]["combined"]),
         ("3. Asset Correlations", results["asset_correlations"]["combined"]),
         ("4. Real Yields (US+CA)", results["real_yields"]["combined"]),
-        ("5. Bad News Reaction", placeholders["bad_news_reaction"]),
+        ("5. Bad News Reaction", results["bad_news_reaction"]["combined"]),
         ("6. High-Beta Leadership", results["high_beta"]["combined"]),
     ]
 
@@ -122,6 +125,15 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         commentary_lines.append(
             "High-beta leadership is mixed; liquidity signals are not yet decisive."
         )  
+
+    br = results.get("bad_news_reaction") or {}
+    hits = br.get("bad_hits") or []
+    if hits:
+        body.append("")
+        body.append("Bad-news items detected (last 48h)")
+        for h in hits[:4]:
+            body.append(f"- {h.get('title','')} | {h.get('link','')}")
+            
     subject = f"Deflation Dashboard (CAN+US) — {now_et}"
 
     body = []
@@ -159,6 +171,8 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- VNQ (US REITs): {links['vnq']}")
     body.append(f"- BoC Press Releases (RSS): {links['boc_press_rss']}")
     body.append(f"- Fed Press Releases (RSS): {links['fed_press_rss']}")
+    body.append(f"- CBC Business (RSS): {links['cbc_business_rss']}")
+    body.append(f"- MarketWatch Top Stories (RSS): {links['mw_rss']}")
 
     return subject, "\n".join(body)
 
@@ -185,6 +199,7 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
+    bad_reaction = bad_news_reaction(xic=xic, spy=spy, bad_hits=bad_hits)
     
     # --- Asset correlation data ---
     xic = yahoo_adj_close("XIC.TO", period="6mo")
@@ -241,6 +256,20 @@ def main():
     except Exception as e:
         errors.append(f"Policy RSS failed: {type(e).__name__}: {e}")
         policy = {"combined": "YELLOW", "reason": "policy_failed"}
+
+        # --- Bad news reaction (RSS + market response) ---
+    try:
+        news_feeds = [
+            "https://www.bankofcanada.ca/rss/press-releases/",
+            "https://www.federalreserve.gov/feeds/press_all.xml",
+            "https://www.cbc.ca/cmlink/rss-business",
+            "https://www.marketwatch.com/rss/topstories",
+        ]
+        news_items = fetch_recent_news(news_feeds, hours=48)
+        bad_hits = detect_bad_news(news_items)
+    except Exception as e:
+        errors.append(f"Bad news RSS failed: {type(e).__name__}: {e}")
+        bad_hits = []
         
     results = {
         "credit_stress": credit,
@@ -248,6 +277,7 @@ def main():
         "high_beta": high_beta,
         "asset_correlations": corr,
         "policy_actions": policy,
+        "bad_news_reaction": bad_reaction,
     }
 
     subject, body = build_email(now_et, results)
