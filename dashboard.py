@@ -174,7 +174,14 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- Fed Press Releases (RSS): {links['fed_press_rss']}")
     body.append(f"- CBC Business (RSS): {links['cbc_business_rss']}")
     body.append(f"- MarketWatch Top Stories (RSS): {links['mw_rss']}")
-
+ meta = results.get("meta") or {}
+    body.append("")
+    body.append("Conclusion (Non-Directive)")
+    body.append(f"- Greens: {meta.get('green_count', 'NA')} / 6")
+    body.append(f"- Risk window opening (≥4 greens for 10 runs): {'YES' if meta.get('risk_window_opening') else 'NO'}")
+    body.append(f"- Stand-down active: {'YES' if meta.get('stand_down_active') else 'NO'}")
+    body.append(f"- Stand-down trigger: {meta.get('stand_down_reason', 'NA')}")
+        
     return subject, "\n".join(body)
 
 
@@ -372,15 +379,9 @@ def main():
         "stand_down_active": stand_down_active,
         "stand_down_reason": "override" if stand_down_override else ("persistence" if stand_down_persist else "none")
     }
+   
+    subject, body = build_email(now_et, results)
 
-    meta = results.get("meta") or {}
-    body.append("")
-    body.append("Conclusion (Non-Directive)")
-    body.append(f"- Greens: {meta.get('green_count', 'NA')} / 6")
-    body.append(f"- Risk window opening (≥4 greens for 10 runs): {'YES' if meta.get('risk_window_opening') else 'NO'}")
-    body.append(f"- Stand-down active: {'YES' if meta.get('stand_down_active') else 'NO'}")
-    body.append(f"- Stand-down trigger: {meta.get('stand_down_reason', 'NA')}")
-        
     send_email(
         subject=subject,
         body=body,
@@ -388,6 +389,7 @@ def main():
         password=os.environ["EMAIL_PASSWORD"],
         sender=os.environ["EMAIL_FROM"],
         recipient=os.environ["EMAIL_TO"],
+    )
     )
 
 
