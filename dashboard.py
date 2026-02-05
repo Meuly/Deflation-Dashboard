@@ -338,7 +338,7 @@ def main():
         "bad_news_reaction": bad_reaction,
     }
 
-        status_map = {
+    status_map = {
         "credit_stress": credit["combined"],
         "policy_actions": policy["combined"],
         "asset_correlations": corr["combined"],
