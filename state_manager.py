@@ -46,3 +46,18 @@ def compute_persistence_flags(state):
     stand_down_persist = last_n_all(lambda r: r["green_count"] <= 2, 5)
 
     return risk_window_opening, stand_down_persist
+
+def last_n_summary(state, n: int = 12):
+    runs = state.get("runs", [])[-n:]
+    if not runs:
+        return ""
+
+    # Map green_count to a simple character
+    def gc_char(gc):
+        if gc >= 4:
+            return "G"
+        if gc <= 2:
+            return "R"
+        return "Y"
+
+    return "".join(gc_char(r.get("green_count", 0)) for r in runs)
