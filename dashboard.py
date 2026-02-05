@@ -155,7 +155,6 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- US HY OAS (FRED): {links['us_hy_oas_fred']}")
     body.append(f"- US HY OAS chart: {links['us_hy_oas_chart']}")
     body.append(f"- Canada HY proxy (XHY.TO): {links['ca_xhy']}")
-
     body.append("")
     body.append("Context & Interpretation (Non-Directive)")
     body.extend([f"- {x}" for x in commentary_lines])
@@ -221,7 +220,8 @@ def main():
 )
 
     real_yields = real_yields_us_can(us_real_10y, ca_10y_nominal)
-        # --- Bad news reaction (guaranteed-defined variables) ---
+    
+    # --- Bad news reaction (guaranteed-defined variables) ---
     bad_hits = bad_hits if "bad_hits" in locals() else []
 
     try:
@@ -268,13 +268,13 @@ def main():
         errors.append(f"High-beta calc failed: {type(e).__name__}: {e}")
         high_beta = {"combined": "YELLOW", "reason": "high_beta_failed"}
 
-      # --- Asset correlation data (fail-soft) ---
+    # --- Asset correlation data (fail-soft) ---
     try:
         xic = yahoo_adj_close("XIC.TO", period="6mo")
     except Exception as e:
         errors.append(f"XIC.TO fetch failed: {type(e).__name__}: {e}")
 
-        # --- Bad news reaction (RSS + market response) ---
+    # --- Bad news reaction (RSS + market response) ---
     try:
         news_feeds = [
             "https://www.bankofcanada.ca/rss/press-releases/",
