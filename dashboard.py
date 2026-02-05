@@ -6,6 +6,7 @@ from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leade
 from emailer import send_email
 from news_policy import fetch_recent_feed_items, policy_actions_indicator
 from news_bad import fetch_recent_news, detect_bad_news
+from state_manager import load_state, save_state, add_run, compute_persistence_flags
 
 def fmt_status(s: str) -> str:
     return {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(s, "🟡")
@@ -337,10 +338,48 @@ def main():
         "bad_news_reaction": bad_reaction,
     }
 
+        status_map = {
+        "credit_stress": credit["combined"],
+        "policy_actions": policy["combined"],
+        "asset_correlations": corr["combined"],
+        "real_yields": real_yields["combined"],
+        "bad_news_reaction": bad_reaction["combined"],
+        "high_beta": high_beta["combined"],
+    }
+
+    green_count = sum(1 for v in status_map.values() if v == "GREEN")
+
+    state = load_state()
+    state = add_run(state, green_count=green_count, statuses=status_map)
+    risk_window_opening, stand_down_persist = compute_persistence_flags(state)
+    save_state(state)
+
+    stand_down_override = (
+        status_map["credit_stress"] == "RED"
+        or status_map["asset_correlations"] == "RED"
+        or status_map["policy_actions"] == "RED"
+    )
+    stand_down_active = stand_down_override or stand_down_persist
+
     subject, body = build_email(now_et, results)
 
     if errors:
         body += "\n\nData Warnings\n" + "\n".join([f"- {x}" for x in errors])
+
+    results["meta"] = {
+        "green_count": green_count,
+        "risk_window_opening": risk_window_opening,
+        "stand_down_active": stand_down_active,
+        "stand_down_reason": "override" if stand_down_override else ("persistence" if stand_down_persist else "none")
+    }
+
+    meta = results.get("meta") or {}
+    body.append("")
+    body.append("Conclusion (Non-Directive)")
+    body.append(f"- Greens: {meta.get('green_count', 'NA')} / 6")
+    body.append(f"- Risk window opening (≥4 greens for 10 runs): {'YES' if meta.get('risk_window_opening') else 'NO'}")
+    body.append(f"- Stand-down active: {'YES' if meta.get('stand_down_active') else 'NO'}")
+    body.append(f"- Stand-down trigger: {meta.get('stand_down_reason', 'NA')}")
         
     send_email(
         subject=subject,
