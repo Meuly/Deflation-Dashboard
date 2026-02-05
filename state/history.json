@@ -1,1 +1,16 @@
-{"runs":[]}
+{
+  "runs": [
+    {
+      "ts": "2026-02-05T21:57:44.551549+00:00",
+      "green_count": 0,
+      "statuses": {
+        "credit_stress": "RED",
+        "policy_actions": "YELLOW",
+        "asset_correlations": "YELLOW",
+        "real_yields": "YELLOW",
+        "bad_news_reaction": "YELLOW",
+        "high_beta": "RED"
+      }
+    }
+  ]
+}
