@@ -372,6 +372,7 @@ def main():
     risk_window_opening, stand_down_persist = compute_persistence_flags(state)
     save_state(state)
     history_bar = last_n_summary(state, n=12)
+    results.setdefault("meta", {})
     results["meta"]["history_bar"] = history_bar
 
     override_reasons = []
