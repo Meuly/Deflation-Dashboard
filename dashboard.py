@@ -6,7 +6,7 @@ from indicators import credit_stress_us_can, real_yields_us_can, high_beta_leade
 from emailer import send_email
 from news_policy import fetch_recent_feed_items, policy_actions_indicator
 from news_bad import fetch_recent_news, detect_bad_news
-from state_manager import load_state, save_state, add_run, compute_persistence_flags
+from state_manager import load_state, save_state, add_run, compute_persistence_flags, last_n_summary
 
 def fmt_status(s: str) -> str:
     return {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(s, "🟡")
@@ -187,6 +187,10 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
         f"{'YES' if meta.get('stand_down_active') else 'NO'}"
     )
     body.append(f"- Stand-down trigger: {meta.get('stand_down_reason', 'NA')}")
+
+    hb = meta.get("history_bar", "")
+    if hb:
+        body.append(f"- Recent runs (12): {hb}   (G=≥4 greens, Y=3 greens, R=≤2 greens)")
         
     return subject, "\n".join(body)
 
@@ -367,6 +371,8 @@ def main():
     state = add_run(state, green_count=green_count, statuses=status_map)
     risk_window_opening, stand_down_persist = compute_persistence_flags(state)
     save_state(state)
+    history_bar = last_n_summary(state, n=12)
+    results["meta"]["history_bar"] = history_bar
 
     stand_down_override = (
         status_map["credit_stress"] == "RED"
