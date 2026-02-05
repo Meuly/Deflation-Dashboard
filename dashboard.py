@@ -397,8 +397,6 @@ def main():
         sender=os.environ["EMAIL_FROM"],
         recipient=os.environ["EMAIL_TO"],
     )
-    )
-
 
 if __name__ == "__main__":
     main()
