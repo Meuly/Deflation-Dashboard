@@ -174,7 +174,7 @@ def build_email(now_et: str, results: dict) -> tuple[str, str]:
     body.append(f"- Fed Press Releases (RSS): {links['fed_press_rss']}")
     body.append(f"- CBC Business (RSS): {links['cbc_business_rss']}")
     body.append(f"- MarketWatch Top Stories (RSS): {links['mw_rss']}")
- meta = results.get("meta") or {}
+    meta = results.get("meta") or {}
     body.append("")
     body.append("Conclusion (Non-Directive)")
     body.append(f"- Greens: {meta.get('green_count', 'NA')} / 6")
