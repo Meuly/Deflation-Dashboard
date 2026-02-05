@@ -27,3 +27,14 @@ jobs:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python dashboard.py
+
+      - name: Commit state updates
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add state/history.json
+          git diff --cached --quiet || git commit -m "Update dashboard state"
+          git push
+
+    permissions:
+    contents: write
