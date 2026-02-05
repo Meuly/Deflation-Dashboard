@@ -374,23 +374,26 @@ def main():
     history_bar = last_n_summary(state, n=12)
     results["meta"]["history_bar"] = history_bar
 
-    stand_down_override = (
-        status_map["credit_stress"] == "RED"
-        or status_map["asset_correlations"] == "RED"
-        or status_map["policy_actions"] == "RED"
-    )
+    override_reasons = []
+    if status_map["credit_stress"] == "RED":
+        override_reasons.append("credit_stress=RED")
+    if status_map["asset_correlations"] == "RED":
+        override_reasons.append("asset_correlations=RED")
+    if status_map["policy_actions"] == "RED":
+        override_reasons.append("policy_actions=RED")
+
+    stand_down_override = len(override_reasons) > 0
     stand_down_active = stand_down_override or stand_down_persist
-
-    subject, body = build_email(now_et, results)
-
-    if errors:
-        body += "\n\nData Warnings\n" + "\n".join([f"- {x}" for x in errors])
 
     results["meta"] = {
         "green_count": green_count,
         "risk_window_opening": risk_window_opening,
         "stand_down_active": stand_down_active,
-        "stand_down_reason": "override" if stand_down_override else ("persistence" if stand_down_persist else "none")
+        "stand_down_reason": (
+            "override: " + ", ".join(override_reasons)
+            if stand_down_override
+            else ("persistence (≤2 greens for 5 runs)" if stand_down_persist else "none")
+        ),
     }
    
     subject, body = build_email(now_et, results)
