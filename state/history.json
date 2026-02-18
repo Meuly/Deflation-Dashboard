@@ -323,6 +323,18 @@
         "bad_news_reaction": "YELLOW",
         "high_beta": "RED"
       }
+    },
+    {
+      "ts": "2026-02-18T22:01:10.870377+00:00",
+      "green_count": 1,
+      "statuses": {
+        "credit_stress": "RED",
+        "policy_actions": "YELLOW",
+        "asset_correlations": "YELLOW",
+        "real_yields": "GREEN",
+        "bad_news_reaction": "YELLOW",
+        "high_beta": "RED"
+      }
     }
   ]
 }
