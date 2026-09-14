@@ -1,18 +1,6 @@
 {
   "runs": [
     {
-      "ts": "2026-07-19T21:08:41.669108+00:00",
-      "green_count": 0,
-      "statuses": {
-        "credit_stress": "YELLOW",
-        "policy_actions": "YELLOW",
-        "asset_correlations": "YELLOW",
-        "real_yields": "RED",
-        "bad_news_reaction": "YELLOW",
-        "high_beta": "YELLOW"
-      }
-    },
-    {
       "ts": "2026-07-20T21:33:43.927539+00:00",
       "green_count": 0,
       "statuses": {
@@ -718,6 +706,18 @@
         "real_yields": "RED",
         "bad_news_reaction": "YELLOW",
         "high_beta": "RED"
+      }
+    },
+    {
+      "ts": "2026-09-14T18:01:43.535759+00:00",
+      "green_count": 1,
+      "statuses": {
+        "credit_stress": "YELLOW",
+        "policy_actions": "YELLOW",
+        "asset_correlations": "YELLOW",
+        "real_yields": "RED",
+        "bad_news_reaction": "YELLOW",
+        "high_beta": "GREEN"
       }
     }
   ]
